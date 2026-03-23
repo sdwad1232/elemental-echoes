@@ -37,7 +37,6 @@ export function MainMenu({ onStart }: MainMenuProps) {
         ))}
       </div>
 
-      {/* Content */}
       <div
         className="relative z-10 flex flex-col items-center gap-12 transition-all duration-1000"
         style={{
@@ -45,7 +44,6 @@ export function MainMenu({ onStart }: MainMenuProps) {
           transform: visible ? 'translateY(0)' : 'translateY(20px)',
         }}
       >
-        {/* Title */}
         <div className="text-center">
           <h1 className="font-display text-6xl md:text-8xl font-bold tracking-tight text-foreground leading-[0.9]">
             Elemental
@@ -58,7 +56,6 @@ export function MainMenu({ onStart }: MainMenuProps) {
           </p>
         </div>
 
-        {/* Element preview */}
         <div className="flex gap-6">
           {elements.map((el) => {
             const config = ELEMENTS[el];
@@ -91,7 +88,14 @@ export function MainMenu({ onStart }: MainMenuProps) {
           })}
         </div>
 
-        {/* Start button */}
+        {/* Features list */}
+        <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-[11px] font-body text-muted-foreground/70">
+          <span>⚔ Dynamic combat with elemental weaknesses</span>
+          <span>🌍 4 unique realms to explore</span>
+          <span>📈 Level up and grow stronger</span>
+          <span>✨ Collect shards, orbs, and health</span>
+        </div>
+
         <button
           onClick={onStart}
           className="group relative font-display text-lg tracking-[0.3em] uppercase px-12 py-4 rounded-lg transition-all duration-300 active:scale-95 border border-primary/30 text-primary hover:border-primary/60"
@@ -99,18 +103,18 @@ export function MainMenu({ onStart }: MainMenuProps) {
             background: 'linear-gradient(135deg, hsl(42 90% 55% / 0.08), hsl(42 90% 55% / 0.02))',
           }}
         >
-          <span className="relative z-10">Enter the Realms</span>
+          <span className="relative z-10">Begin Adventure</span>
           <div
             className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-            style={{
-              boxShadow: '0 0 30px hsl(42 90% 55% / 0.2), 0 0 60px hsl(42 90% 55% / 0.1)',
-            }}
+            style={{ boxShadow: '0 0 30px hsl(42 90% 55% / 0.2), 0 0 60px hsl(42 90% 55% / 0.1)' }}
           />
         </button>
 
-        <p className="text-muted-foreground/50 text-xs font-body">
-          A browser-playable demo · Built with React Three Fiber
-        </p>
+        <div className="flex gap-6 text-[10px] font-body text-muted-foreground/40 uppercase tracking-wider">
+          <span>WASD to move</span>
+          <span>1-4 switch elements</span>
+          <span>Space to attack</span>
+        </div>
       </div>
     </div>
   );
