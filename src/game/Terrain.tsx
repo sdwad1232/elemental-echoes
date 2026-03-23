@@ -1,24 +1,17 @@
 import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { Element } from './types';
+import { Realm, REALM_CONFIGS } from './types';
 
 interface TerrainProps {
-  activeElement: Element;
+  currentRealm: Realm;
 }
 
-const ELEMENT_GROUND: Record<Element, string> = {
-  fire: '#3d1a0a',
-  water: '#0a2a3d',
-  earth: '#1a3d0a',
-  air: '#1a2a3d',
-};
-
-export function Terrain({ activeElement }: TerrainProps) {
-  const meshRef = useRef<THREE.Mesh>(null);
+export function Terrain({ currentRealm }: TerrainProps) {
+  const config = REALM_CONFIGS[currentRealm];
 
   const geometry = useMemo(() => {
-    const geo = new THREE.PlaneGeometry(40, 40, 64, 64);
+    const geo = new THREE.PlaneGeometry(50, 50, 80, 80);
     const pos = geo.attributes.position;
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i);
@@ -33,38 +26,83 @@ export function Terrain({ activeElement }: TerrainProps) {
   }, []);
 
   return (
-    <mesh ref={meshRef} geometry={geometry} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-      <meshStandardMaterial color={ELEMENT_GROUND[activeElement]} roughness={0.9} metalness={0.1} />
+    <mesh geometry={geometry} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+      <meshStandardMaterial color={config.groundColor} roughness={0.9} metalness={0.1} />
     </mesh>
   );
 }
 
-export function FloatingIslands({ activeElement }: { activeElement: Element }) {
+export function FloatingIslands({ currentRealm }: { currentRealm: Realm }) {
   const groupRef = useRef<THREE.Group>(null);
+  const config = REALM_CONFIGS[currentRealm];
 
   useFrame((_, delta) => {
-    if (groupRef.current) {
-      groupRef.current.rotation.y += delta * 0.02;
-    }
+    if (groupRef.current) groupRef.current.rotation.y += delta * 0.015;
   });
 
-  const colors: Record<Element, string> = {
-    fire: '#8b3a1a',
-    water: '#1a5a7a',
-    earth: '#3a6a2a',
-    air: '#5a6a7a',
-  };
+  const islands = useMemo(() => [
+    [8, 4, 5], [-6, 5, -8], [10, 6, -4], [-9, 3, 6],
+    [3, 7, -10], [-4, 8, 3], [12, 5, 8], [-11, 6, -3],
+  ], []);
 
   return (
     <group ref={groupRef}>
-      {[
-        [8, 4, 5], [-6, 5, -8], [10, 6, -4], [-9, 3, 6],
-        [3, 7, -10], [-4, 8, 3],
-      ].map(([x, y, z], i) => (
+      {islands.map(([x, y, z], i) => (
         <mesh key={i} position={[x, y, z]} castShadow>
-          <dodecahedronGeometry args={[0.6 + Math.random() * 0.8, 0]} />
-          <meshStandardMaterial color={colors[activeElement]} roughness={0.7} />
+          <dodecahedronGeometry args={[0.5 + (i * 0.15), 0]} />
+          <meshStandardMaterial color={config.groundColor} roughness={0.7} emissive={config.ambientColor} emissiveIntensity={0.2} />
         </mesh>
+      ))}
+    </group>
+  );
+}
+
+// Decorative structures per realm
+export function RealmDecorations({ currentRealm }: { currentRealm: Realm }) {
+  const structures = useMemo(() => {
+    const items: Array<{ pos: [number, number, number]; scale: number }> = [];
+    for (let i = 0; i < 12; i++) {
+      const angle = (i / 12) * Math.PI * 2;
+      const dist = 7 + Math.random() * 8;
+      items.push({
+        pos: [Math.cos(angle) * dist, 0, Math.sin(angle) * dist],
+        scale: 0.5 + Math.random() * 1.5,
+      });
+    }
+    return items;
+  }, []);
+
+  const config = REALM_CONFIGS[currentRealm];
+
+  return (
+    <group>
+      {structures.map((s, i) => (
+        <group key={i} position={s.pos}>
+          {currentRealm === 'fire' && (
+            <mesh position={[0, s.scale / 2, 0]} castShadow>
+              <coneGeometry args={[0.3, s.scale, 6]} />
+              <meshStandardMaterial color="#4a1a0a" emissive="#ff4400" emissiveIntensity={0.15} roughness={0.8} />
+            </mesh>
+          )}
+          {currentRealm === 'water' && (
+            <mesh position={[0, s.scale * 0.3, 0]} castShadow>
+              <cylinderGeometry args={[0.15, 0.4, s.scale * 0.6, 6]} />
+              <meshStandardMaterial color="#1a4a6a" emissive="#0088ff" emissiveIntensity={0.2} transparent opacity={0.7} roughness={0.2} />
+            </mesh>
+          )}
+          {currentRealm === 'earth' && (
+            <mesh position={[0, s.scale * 0.4, 0]} castShadow>
+              <cylinderGeometry args={[0.1, 0.15, s.scale * 0.8, 5]} />
+              <meshStandardMaterial color="#2a4a1a" roughness={0.95} />
+            </mesh>
+          )}
+          {currentRealm === 'air' && (
+            <mesh position={[0, s.scale, 0]}>
+              <sphereGeometry args={[0.2 + s.scale * 0.1, 8, 8]} />
+              <meshStandardMaterial color="#8899aa" emissive="#aabbcc" emissiveIntensity={0.3} transparent opacity={0.4} />
+            </mesh>
+          )}
+        </group>
       ))}
     </group>
   );
