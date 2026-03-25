@@ -1,4 +1,4 @@
-import { useRef, useCallback } from 'react';
+import { useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Stars } from '@react-three/drei';
 import { Terrain, FloatingIslands, RealmDecorations } from './Terrain';
@@ -15,34 +15,21 @@ interface GameSceneProps {
   enemies: EnemyData[];
   collectibles: CollectibleData[];
   onSwitchElement: (el: Element) => void;
-  onAttackEnemy: (id: string) => void;
-  onCollectItem: (id: string) => void;
-  onEnemyAttackPlayer: (damage: number) => void;
-  onEnterRealm: (realm: Realm) => void;
-  setEnemies: React.Dispatch<React.SetStateAction<EnemyData[]>>;
+  onAttack: () => void;
+  onMove: (dx: number, dz: number, delta: number) => void;
+  playerX: number;
+  playerY: number;
+  playerZ: number;
 }
 
 export function GameScene({
   activeElement, currentRealm, enemies, collectibles,
-  onSwitchElement, onAttackEnemy, onCollectItem, onEnemyAttackPlayer, onEnterRealm, setEnemies,
+  onSwitchElement, onAttack, onMove,
+  playerX, playerY, playerZ,
 }: GameSceneProps) {
   const playerRef = useRef<THREE.Group>(null);
   const realmConfig = REALM_CONFIGS[currentRealm];
   const elConfig = ELEMENTS[activeElement];
-
-  const handleAttack = useCallback(() => {
-    if (!playerRef.current) return;
-    const playerPos = playerRef.current.position;
-    // Find enemies within attack range
-    enemies.forEach(e => {
-      if (e.dead) return;
-      const dist = new THREE.Vector3(...e.position).distanceTo(playerPos);
-      // Also check enemies that moved (approximate)
-      if (dist < 3) {
-        onAttackEnemy(e.id);
-      }
-    });
-  }, [enemies, onAttackEnemy]);
 
   return (
     <Canvas
@@ -69,10 +56,19 @@ export function GameScene({
       <Terrain currentRealm={currentRealm} />
       <FloatingIslands currentRealm={currentRealm} />
       <RealmDecorations currentRealm={currentRealm} />
-      <Portals currentRealm={currentRealm} playerRef={playerRef} onEnterRealm={onEnterRealm} />
-      <Enemies enemies={enemies} playerRef={playerRef} onEnemyAttackPlayer={onEnemyAttackPlayer} setEnemies={setEnemies} />
-      <Collectibles collectibles={collectibles} playerRef={playerRef} onCollect={onCollectItem} />
-      <Player activeElement={activeElement} onSwitchElement={onSwitchElement} onAttack={handleAttack} playerRef={playerRef} />
+      <Portals currentRealm={currentRealm} />
+      <Enemies enemies={enemies} />
+      <Collectibles collectibles={collectibles} />
+      <Player
+        activeElement={activeElement}
+        onSwitchElement={onSwitchElement}
+        onAttack={onAttack}
+        onMove={onMove}
+        playerRef={playerRef}
+        playerX={playerX}
+        playerY={playerY}
+        playerZ={playerZ}
+      />
 
       <OrbitControls
         target={[0, 1, 0]}

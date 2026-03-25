@@ -5,64 +5,26 @@ import { EnemyData, ELEMENTS } from './types';
 
 interface EnemiesProps {
   enemies: EnemyData[];
-  playerRef: React.MutableRefObject<THREE.Group | null>;
-  onEnemyAttackPlayer: (damage: number) => void;
-  setEnemies: React.Dispatch<React.SetStateAction<EnemyData[]>>;
 }
 
-function Enemy({ enemy, playerRef, onEnemyAttackPlayer, updateEnemy }: {
-  enemy: EnemyData;
-  playerRef: React.MutableRefObject<THREE.Group | null>;
-  onEnemyAttackPlayer: (damage: number) => void;
-  updateEnemy: (id: string, updates: Partial<EnemyData>) => void;
-}) {
+function Enemy({ enemy }: { enemy: EnemyData }) {
   const meshRef = useRef<THREE.Group>(null);
   const config = ELEMENTS[enemy.element];
 
-  useFrame((_, delta) => {
-    if (!meshRef.current || enemy.dead || !playerRef.current) return;
-
-    const playerPos = playerRef.current.position;
-    const enemyPos = meshRef.current.position;
-    const dir = new THREE.Vector3().subVectors(playerPos, enemyPos);
-    const dist = dir.length();
-
-    // Chase player if within range
-    if (dist < 12 && dist > 1.5) {
-      dir.normalize().multiplyScalar(enemy.speed * delta);
-      dir.y = 0;
-      meshRef.current.position.add(dir);
-      meshRef.current.lookAt(playerPos.x, meshRef.current.position.y, playerPos.z);
-    }
-
-    // Attack player if close
-    if (dist < 2) {
-      const now = Date.now();
-      if (now - enemy.lastAttackTime > enemy.attackCooldown) {
-        onEnemyAttackPlayer(enemy.damage);
-        updateEnemy(enemy.id, { lastAttackTime: now });
-      }
-    }
-
-    // Bobbing
-    meshRef.current.position.y = 0.6 + Math.sin(Date.now() * 0.004 + enemy.position[0]) * 0.15;
+  useFrame(() => {
+    if (!meshRef.current || enemy.dead) return;
+    // Position is driven by WASM, just sync
+    meshRef.current.position.set(enemy.position[0], enemy.position[1], enemy.position[2]);
   });
 
   if (enemy.dead) {
-    // Death particles - show briefly then remove
     const elapsed = Date.now() - (enemy.deathTime || Date.now());
     if (elapsed > 1500) return null;
     const fade = 1 - elapsed / 1500;
     return (
       <mesh position={enemy.position}>
         <sphereGeometry args={[0.5 + (1 - fade) * 2, 8, 8]} />
-        <meshStandardMaterial
-          color={config.glowColor}
-          emissive={config.glowColor}
-          emissiveIntensity={3 * fade}
-          transparent
-          opacity={fade * 0.5}
-        />
+        <meshStandardMaterial color={config.glowColor} emissive={config.glowColor} emissiveIntensity={3 * fade} transparent opacity={fade * 0.5} />
       </mesh>
     );
   }
@@ -71,23 +33,14 @@ function Enemy({ enemy, playerRef, onEnemyAttackPlayer, updateEnemy }: {
 
   return (
     <group ref={meshRef} position={enemy.position}>
-      {/* Body - spiky for enemies */}
       <mesh castShadow>
         <octahedronGeometry args={[0.4, 0]} />
-        <meshStandardMaterial
-          color={config.color}
-          emissive={config.color}
-          emissiveIntensity={0.4}
-          roughness={0.4}
-          metalness={0.5}
-        />
+        <meshStandardMaterial color={config.color} emissive={config.color} emissiveIntensity={0.4} roughness={0.4} metalness={0.5} />
       </mesh>
-      {/* Rotating ring */}
       <mesh rotation={[Math.PI / 4, Date.now() * 0.002, 0]}>
         <torusGeometry args={[0.6, 0.05, 8, 16]} />
         <meshStandardMaterial color={config.glowColor} emissive={config.glowColor} emissiveIntensity={1} transparent opacity={0.6} />
       </mesh>
-      {/* Health bar */}
       <group position={[0, 1, 0]}>
         <mesh>
           <planeGeometry args={[0.8, 0.08]} />
@@ -98,7 +51,6 @@ function Enemy({ enemy, playerRef, onEnemyAttackPlayer, updateEnemy }: {
           <meshBasicMaterial color={healthPercent > 0.5 ? '#4ade80' : healthPercent > 0.25 ? '#fbbf24' : '#ef4444'} />
         </mesh>
       </group>
-      {/* Element indicator */}
       <mesh position={[0, -0.5, 0]}>
         <sphereGeometry args={[0.08, 8, 8]} />
         <meshStandardMaterial color={config.glowColor} emissive={config.glowColor} emissiveIntensity={2} />
@@ -108,21 +60,11 @@ function Enemy({ enemy, playerRef, onEnemyAttackPlayer, updateEnemy }: {
   );
 }
 
-export function Enemies({ enemies, playerRef, onEnemyAttackPlayer, setEnemies }: EnemiesProps) {
-  const updateEnemy = (id: string, updates: Partial<EnemyData>) => {
-    setEnemies(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
-  };
-
+export function Enemies({ enemies }: EnemiesProps) {
   return (
     <group>
       {enemies.map(enemy => (
-        <Enemy
-          key={enemy.id}
-          enemy={enemy}
-          playerRef={playerRef}
-          onEnemyAttackPlayer={onEnemyAttackPlayer}
-          updateEnemy={updateEnemy}
-        />
+        <Enemy key={enemy.id} enemy={enemy} />
       ))}
     </group>
   );

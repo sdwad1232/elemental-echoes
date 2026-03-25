@@ -8,12 +8,24 @@ const Index = () => {
   const {
     screen, activeElement, health, currentRealm, enemies, collectibles, stats,
     damageFlash, levelUpFlash, notification,
-    startGame, backToMenu, switchElement, enterRealm,
-    takeDamage, attackEnemy, collectItem, setEnemies,
+    startGame, backToMenu, switchElement, attack, movePlayer, wasmState,
   } = useGameState();
 
   if (screen === 'menu') {
     return <MainMenu onStart={startGame} />;
+  }
+
+  if (screen === 'loading') {
+    return (
+      <div className="flex items-center justify-center w-screen h-screen bg-black">
+        <div className="text-center">
+          <div className="text-2xl font-bold text-orange-400 animate-pulse">
+            Loading WASM Engine...
+          </div>
+          <div className="mt-2 text-sm text-gray-500">Kompilerer spillogikk</div>
+        </div>
+      </div>
+    );
   }
 
   if (screen === 'gameover') {
@@ -28,11 +40,11 @@ const Index = () => {
         enemies={enemies}
         collectibles={collectibles}
         onSwitchElement={switchElement}
-        onAttackEnemy={attackEnemy}
-        onCollectItem={collectItem}
-        onEnemyAttackPlayer={takeDamage}
-        onEnterRealm={enterRealm}
-        setEnemies={setEnemies}
+        onAttack={attack}
+        onMove={movePlayer}
+        playerX={wasmState?.playerX || 0}
+        playerY={wasmState?.playerY || 0.8}
+        playerZ={wasmState?.playerZ || 0}
       />
       <HUD
         activeElement={activeElement}
