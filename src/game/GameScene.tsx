@@ -14,9 +14,6 @@ interface GameSceneProps {
   currentRealm: Realm;
   enemies: EnemyData[];
   collectibles: CollectibleData[];
-  onSwitchElement: (el: Element) => void;
-  onAttack: () => void;
-  onMove: (dx: number, dz: number, delta: number) => void;
   playerX: number;
   playerY: number;
   playerZ: number;
@@ -24,7 +21,6 @@ interface GameSceneProps {
 
 export function GameScene({
   activeElement, currentRealm, enemies, collectibles,
-  onSwitchElement, onAttack, onMove,
   playerX, playerY, playerZ,
 }: GameSceneProps) {
   const playerRef = useRef<THREE.Group>(null);
@@ -61,9 +57,6 @@ export function GameScene({
       <Collectibles collectibles={collectibles} />
       <Player
         activeElement={activeElement}
-        onSwitchElement={onSwitchElement}
-        onAttack={onAttack}
-        onMove={onMove}
         playerRef={playerRef}
         playerX={playerX}
         playerY={playerY}
