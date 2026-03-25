@@ -1,13 +1,7 @@
 import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { Realm, ELEMENTS, REALM_CONFIGS } from './types';
-
-interface PortalsProps {
-  currentRealm: Realm;
-  playerRef: React.MutableRefObject<THREE.Group | null>;
-  onEnterRealm: (realm: Realm) => void;
-}
+import { Realm, ELEMENTS } from './types';
 
 const PORTAL_POSITIONS: Record<Realm, [number, number, number]> = {
   fire: [15, 1.5, 0],
@@ -16,17 +10,14 @@ const PORTAL_POSITIONS: Record<Realm, [number, number, number]> = {
   air: [0, 1.5, -15],
 };
 
-function Portal({ realm, position, playerRef, onEnter, isCurrent }: {
+function Portal({ realm, position, isCurrent }: {
   realm: Realm;
   position: [number, number, number];
-  playerRef: React.MutableRefObject<THREE.Group | null>;
-  onEnter: () => void;
   isCurrent: boolean;
 }) {
   const ringRef = useRef<THREE.Mesh>(null);
   const innerRef = useRef<THREE.Mesh>(null);
   const config = ELEMENTS[realm];
-  const cooldownRef = useRef(false);
 
   useFrame(() => {
     if (ringRef.current) {
@@ -36,21 +27,10 @@ function Portal({ realm, position, playerRef, onEnter, isCurrent }: {
     if (innerRef.current) {
       innerRef.current.rotation.y += 0.05;
     }
-
-    if (!playerRef.current || isCurrent || cooldownRef.current) return;
-    const dist = new THREE.Vector3(...position).distanceTo(playerRef.current.position);
-    if (dist < 2.5) {
-      cooldownRef.current = true;
-      onEnter();
-      // Reset player position
-      playerRef.current.position.set(0, 0.8, 0);
-      setTimeout(() => { cooldownRef.current = false; }, 2000);
-    }
   });
 
   return (
     <group position={position}>
-      {/* Portal ring */}
       <mesh ref={ringRef}>
         <torusGeometry args={[1.2, 0.1, 16, 32]} />
         <meshStandardMaterial
@@ -61,7 +41,6 @@ function Portal({ realm, position, playerRef, onEnter, isCurrent }: {
           opacity={isCurrent ? 0.3 : 0.9}
         />
       </mesh>
-      {/* Inner swirl */}
       <mesh ref={innerRef}>
         <circleGeometry args={[1, 32]} />
         <meshStandardMaterial
@@ -73,9 +52,7 @@ function Portal({ realm, position, playerRef, onEnter, isCurrent }: {
           side={THREE.DoubleSide}
         />
       </mesh>
-      {/* Glow */}
       <pointLight color={config.glowColor} intensity={isCurrent ? 0.5 : 3} distance={8} />
-      {/* Particles around portal */}
       {!isCurrent && (
         <points>
           <bufferGeometry>
@@ -101,7 +78,7 @@ function Portal({ realm, position, playerRef, onEnter, isCurrent }: {
   );
 }
 
-export function Portals({ currentRealm, playerRef, onEnterRealm }: PortalsProps) {
+export function Portals({ currentRealm }: { currentRealm: Realm }) {
   const realms: Realm[] = ['fire', 'water', 'earth', 'air'];
 
   return (
@@ -111,8 +88,6 @@ export function Portals({ currentRealm, playerRef, onEnterRealm }: PortalsProps)
           key={realm}
           realm={realm}
           position={PORTAL_POSITIONS[realm]}
-          playerRef={playerRef}
-          onEnter={() => onEnterRealm(realm)}
           isCurrent={realm === currentRealm}
         />
       ))}
