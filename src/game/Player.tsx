@@ -1,28 +1,28 @@
-import { useRef, useEffect } from 'react';
+import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { Element, ELEMENTS } from './types';
+import { WasmGameState } from './wasmBridge';
 
 interface PlayerProps {
   activeElement: Element;
   playerRef: React.MutableRefObject<THREE.Group | null>;
-  playerX: number;
-  playerY: number;
-  playerZ: number;
-  isAttacking?: boolean;
+  wasmStateRef: React.MutableRefObject<WasmGameState | null>;
 }
 
-export function Player({ activeElement, playerRef, playerX, playerY, playerZ }: PlayerProps) {
+export function Player({ activeElement, playerRef, wasmStateRef }: PlayerProps) {
   const groupRef = useRef<THREE.Group>(null);
   const particlesRef = useRef<THREE.Points>(null);
   const prevPosRef = useRef({ x: 0, z: 0 });
 
-  useEffect(() => {
-    if (groupRef.current) playerRef.current = groupRef.current;
-  });
-
   useFrame((_, delta) => {
     if (!groupRef.current) return;
+    if (playerRef) playerRef.current = groupRef.current;
+
+    const state = wasmStateRef.current;
+    if (!state) return;
+
+    const { playerX, playerY, playerZ } = state;
 
     // Compute rotation from movement direction
     const dx = playerX - prevPosRef.current.x;
@@ -53,7 +53,7 @@ export function Player({ activeElement, playerRef, playerX, playerY, playerZ }: 
   }
 
   return (
-    <group ref={groupRef} position={[playerX, playerY, playerZ]}>
+    <group ref={groupRef}>
       <mesh castShadow>
         <capsuleGeometry args={[0.25, 0.5, 8, 16]} />
         <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.3} roughness={0.3} metalness={0.6} />

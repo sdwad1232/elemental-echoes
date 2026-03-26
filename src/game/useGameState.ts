@@ -8,7 +8,7 @@ import {
 
 export type GameScreen = 'menu' | 'playing' | 'gameover' | 'loading';
 
-// Global keyboard state
+// Global keyboard state – never causes re-renders
 const keys: Record<string, boolean> = {};
 
 export function useGameState() {
@@ -16,12 +16,28 @@ export function useGameState() {
   const [damageFlash, setDamageFlash] = useState(false);
   const [levelUpFlash, setLevelUpFlash] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
-  const [wasmState, setWasmState] = useState<WasmGameState | null>(null);
+
+  // HUD-only state, updated at ~10fps instead of 60fps
+  const [hudState, setHudState] = useState<{
+    activeElement: Element;
+    health: number;
+    currentRealm: Realm;
+    stats: GameStats;
+  }>({
+    activeElement: 'fire',
+    health: 100,
+    currentRealm: 'fire',
+    stats: { kills: 0, xp: 0, level: 1, xpToNext: 80, maxHealth: 100, attackPower: 20, realmsVisited: new Set(['fire'] as Realm[]) },
+  });
+
+  // The WASM state ref – updated every frame without re-renders
+  const wasmStateRef = useRef<WasmGameState | null>(null);
 
   const animFrameRef = useRef<number>(0);
   const lastTimeRef = useRef<number>(0);
   const screenRef = useRef<GameScreen>('menu');
   const attackCooldownRef = useRef(false);
+  const hudTickRef = useRef(0);
   screenRef.current = screen;
 
   // Keyboard listeners
@@ -101,9 +117,28 @@ export function useGameState() {
     const events = wasmDrainEvents();
     if (events.length > 0) processEvents(events);
 
-    // Read state
+    // Read state into ref (NO re-render)
     const state = wasmGetState();
-    setWasmState(state);
+    wasmStateRef.current = state;
+
+    // Update HUD at ~10fps (every ~6 frames)
+    hudTickRef.current++;
+    if (hudTickRef.current % 6 === 0) {
+      setHudState({
+        activeElement: state.playerElement,
+        health: state.playerHealth,
+        currentRealm: state.currentRealm,
+        stats: {
+          kills: state.playerKills,
+          xp: state.playerXp,
+          level: state.playerLevel,
+          xpToNext: state.playerXpToNext,
+          maxHealth: state.playerMaxHealth,
+          attackPower: state.playerAttackPower,
+          realmsVisited: state.realmsVisited,
+        },
+      });
+    }
 
     animFrameRef.current = requestAnimationFrame(gameLoop);
   }, [processEvents]);
@@ -115,13 +150,28 @@ export function useGameState() {
     }
     wasmInitGame();
     const initialState = wasmGetState();
-    setWasmState(initialState);
+    wasmStateRef.current = initialState;
+    setHudState({
+      activeElement: initialState.playerElement,
+      health: initialState.playerHealth,
+      currentRealm: initialState.currentRealm,
+      stats: {
+        kills: initialState.playerKills,
+        xp: initialState.playerXp,
+        level: initialState.playerLevel,
+        xpToNext: initialState.playerXpToNext,
+        maxHealth: initialState.playerMaxHealth,
+        attackPower: initialState.playerAttackPower,
+        realmsVisited: initialState.realmsVisited,
+      },
+    });
     setScreen('playing');
     setDamageFlash(false);
     setLevelUpFlash(false);
     const events = wasmDrainEvents();
     processEvents(events);
     lastTimeRef.current = 0;
+    hudTickRef.current = 0;
     animFrameRef.current = requestAnimationFrame(gameLoop);
   }, [gameLoop, processEvents]);
 
@@ -137,32 +187,17 @@ export function useGameState() {
     return () => cancelAnimationFrame(animFrameRef.current);
   }, [screen]);
 
-  const stats: GameStats = wasmState ? {
-    kills: wasmState.playerKills,
-    xp: wasmState.playerXp,
-    level: wasmState.playerLevel,
-    xpToNext: wasmState.playerXpToNext,
-    maxHealth: wasmState.playerMaxHealth,
-    attackPower: wasmState.playerAttackPower,
-    realmsVisited: wasmState.realmsVisited,
-  } : {
-    kills: 0, xp: 0, level: 1, xpToNext: 80,
-    maxHealth: 100, attackPower: 20, realmsVisited: new Set(['fire'] as Realm[]),
-  };
-
   return {
     screen,
-    activeElement: wasmState?.playerElement || 'fire' as Element,
-    health: wasmState?.playerHealth || 100,
-    currentRealm: wasmState?.currentRealm || 'fire' as Realm,
-    enemies: wasmState?.enemies || [],
-    collectibles: wasmState?.collectibles || [],
-    stats,
+    activeElement: hudState.activeElement,
+    health: hudState.health,
+    currentRealm: hudState.currentRealm,
+    stats: hudState.stats,
     damageFlash,
     levelUpFlash,
     notification,
     startGame,
     backToMenu,
-    wasmState,
+    wasmStateRef, // ref instead of state – no re-renders
   };
 }

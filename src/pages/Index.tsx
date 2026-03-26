@@ -6,9 +6,9 @@ import { GameOverScreen } from '@/game/GameOverScreen';
 
 const Index = () => {
   const {
-    screen, activeElement, health, currentRealm, enemies, collectibles, stats,
+    screen, activeElement, health, currentRealm, stats,
     damageFlash, levelUpFlash, notification,
-    startGame, backToMenu, wasmState,
+    startGame, backToMenu, wasmStateRef,
   } = useGameState();
 
   if (screen === 'menu') {
@@ -37,11 +37,7 @@ const Index = () => {
       <GameScene
         activeElement={activeElement}
         currentRealm={currentRealm}
-        enemies={enemies}
-        collectibles={collectibles}
-        playerX={wasmState?.playerX || 0}
-        playerY={wasmState?.playerY || 0.8}
-        playerZ={wasmState?.playerZ || 0}
+        wasmStateRef={wasmStateRef}
       />
       <HUD
         activeElement={activeElement}
