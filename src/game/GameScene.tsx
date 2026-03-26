@@ -116,7 +116,7 @@ export function GameScene({ activeElement, currentRealm, wasmStateRef }: GameSce
         minDistance={5}
         maxDistance={25}
         enablePan={false}
-        enableKeys={false}
+        enableRotate={true}
       />
     </Canvas>
   );
