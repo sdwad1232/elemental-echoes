@@ -17,26 +17,55 @@ interface GameSceneProps {
   tickGame: (delta: number) => void;
 }
 
-/** Camera that follows the player */
+/** Camera that follows the player with cinematic smoothing */
 function CameraFollower({ wasmStateRef }: { wasmStateRef: React.MutableRefObject<WasmGameState | null> }) {
   const { camera } = useThree();
-  const offset = useRef(new THREE.Vector3(0, 10, 14));
+  const smoothPos = useRef(new THREE.Vector3(0, 8, 12));
+  const smoothLookAt = useRef(new THREE.Vector3(0, 1, 0));
+  const prevPlayerPos = useRef(new THREE.Vector3(0, 0, 0));
+  const velocityDir = useRef(new THREE.Vector3(0, 0, 1));
 
-  useFrame(() => {
+  useFrame((_, delta) => {
     const state = wasmStateRef.current;
     if (!state) return;
 
-    const targetX = state.playerX + offset.current.x;
-    const targetY = state.playerY + offset.current.y;
-    const targetZ = state.playerZ + offset.current.z;
+    const playerPos = new THREE.Vector3(state.playerX, state.playerY, state.playerZ);
 
-    // Smooth follow with lerp
-    camera.position.x += (targetX - camera.position.x) * 0.08;
-    camera.position.y += (targetY - camera.position.y) * 0.08;
-    camera.position.z += (targetZ - camera.position.z) * 0.08;
+    // Track movement direction for dynamic offset
+    const movement = new THREE.Vector3(
+      state.playerX - prevPlayerPos.current.x,
+      0,
+      state.playerZ - prevPlayerPos.current.z
+    );
+    if (movement.length() > 0.01) {
+      velocityDir.current.lerp(movement.normalize(), 0.05);
+    }
+    prevPlayerPos.current.copy(playerPos);
 
-    // Look at player
-    camera.lookAt(state.playerX, state.playerY + 1, state.playerZ);
+    // Dynamic offset: camera pulls back slightly in movement direction
+    const baseOffset = new THREE.Vector3(0, 8, 10);
+    const moveBias = velocityDir.current.clone().multiplyScalar(-3);
+    moveBias.y = 0;
+    const desiredOffset = baseOffset.clone().add(moveBias);
+
+    // Target camera position
+    const targetPos = playerPos.clone().add(desiredOffset);
+
+    // Smooth follow with variable speed (faster catch-up when far)
+    const dist = smoothPos.current.distanceTo(targetPos);
+    const lerpSpeed = THREE.MathUtils.clamp(0.03 + dist * 0.015, 0.03, 0.15);
+    smoothPos.current.lerp(targetPos, lerpSpeed);
+    camera.position.copy(smoothPos.current);
+
+    // Smooth look-at target (slightly ahead of player)
+    const lookAhead = velocityDir.current.clone().multiplyScalar(2);
+    const targetLookAt = new THREE.Vector3(
+      state.playerX + lookAhead.x,
+      state.playerY + 1.5,
+      state.playerZ + lookAhead.z
+    );
+    smoothLookAt.current.lerp(targetLookAt, 0.06);
+    camera.lookAt(smoothLookAt.current);
   });
 
   return null;
