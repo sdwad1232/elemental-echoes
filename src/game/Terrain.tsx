@@ -11,7 +11,7 @@ export function Terrain({ currentRealm }: TerrainProps) {
   const config = REALM_CONFIGS[currentRealm];
 
   const geometry = useMemo(() => {
-    const geo = new THREE.PlaneGeometry(50, 50, 80, 80);
+    const geo = new THREE.PlaneGeometry(50, 50, 40, 40);
     const pos = geo.attributes.position;
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i);

@@ -17,9 +17,9 @@ function Collectible({ item }: { item: CollectibleData }) {
   };
   const color = colors[item.type];
 
-  useFrame(() => {
+  useFrame((_, delta) => {
     if (!meshRef.current || item.collected) return;
-    meshRef.current.rotation.y += 0.03;
+    meshRef.current.rotation.y += delta * 1.8;
     meshRef.current.position.y = item.position[1] + Math.sin(Date.now() * 0.003 + item.position[0]) * 0.2;
   });
 
@@ -35,7 +35,6 @@ function Collectible({ item }: { item: CollectibleData }) {
         <icosahedronGeometry args={[0.22, 0]} />
       )}
       <meshStandardMaterial color={color} emissive={color} emissiveIntensity={1.5} transparent opacity={0.85} />
-      <pointLight color={color} intensity={0.5} distance={3} />
     </mesh>
   );
 }
