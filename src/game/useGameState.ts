@@ -8,8 +8,8 @@ import {
 
 export type GameScreen = 'menu' | 'playing' | 'gameover' | 'loading';
 
-// Global keyboard state – never causes re-renders
-const keys: Record<string, boolean> = {};
+// Global keyboard state – shared with GameWorld via ref
+export const keys: Record<string, boolean> = {};
 
 export function useGameState() {
   const [screen, setScreen] = useState<GameScreen>('menu');
@@ -17,7 +17,6 @@ export function useGameState() {
   const [levelUpFlash, setLevelUpFlash] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
 
-  // HUD-only state, updated at ~10fps instead of 60fps
   const [hudState, setHudState] = useState<{
     activeElement: Element;
     health: number;
@@ -30,14 +29,12 @@ export function useGameState() {
     stats: { kills: 0, xp: 0, level: 1, xpToNext: 80, maxHealth: 100, attackPower: 20, realmsVisited: new Set(['fire'] as Realm[]) },
   });
 
-  // The WASM state ref – updated every frame without re-renders
   const wasmStateRef = useRef<WasmGameState | null>(null);
-
-  const animFrameRef = useRef<number>(0);
-  const lastTimeRef = useRef<number>(0);
   const screenRef = useRef<GameScreen>('menu');
   const attackCooldownRef = useRef(false);
   const hudTickRef = useRef(0);
+  const setHudStateRef = useRef(setHudState);
+  setHudStateRef.current = setHudState;
   screenRef.current = screen;
 
   // Keyboard listeners
@@ -81,11 +78,9 @@ export function useGameState() {
     }
   }, []);
 
-  const gameLoop = useCallback((time: number) => {
+  // This function is called from GameWorld's useFrame (inside R3F)
+  const tickGame = useCallback((delta: number) => {
     if (screenRef.current !== 'playing') return;
-
-    const delta = lastTimeRef.current ? Math.min((time - lastTimeRef.current) / 1000, 0.1) : 0.016;
-    lastTimeRef.current = time;
 
     // Read keyboard and move player
     let dx = 0, dz = 0;
@@ -121,10 +116,10 @@ export function useGameState() {
     const state = wasmGetState();
     wasmStateRef.current = state;
 
-    // Update HUD at ~10fps (every ~6 frames)
+    // Update HUD at ~10fps
     hudTickRef.current++;
     if (hudTickRef.current % 6 === 0) {
-      setHudState({
+      setHudStateRef.current({
         activeElement: state.playerElement,
         health: state.playerHealth,
         currentRealm: state.currentRealm,
@@ -139,8 +134,6 @@ export function useGameState() {
         },
       });
     }
-
-    animFrameRef.current = requestAnimationFrame(gameLoop);
   }, [processEvents]);
 
   const startGame = useCallback(async () => {
@@ -170,22 +163,12 @@ export function useGameState() {
     setLevelUpFlash(false);
     const events = wasmDrainEvents();
     processEvents(events);
-    lastTimeRef.current = 0;
     hudTickRef.current = 0;
-    animFrameRef.current = requestAnimationFrame(gameLoop);
-  }, [gameLoop, processEvents]);
+  }, [processEvents]);
 
   const backToMenu = useCallback(() => {
-    cancelAnimationFrame(animFrameRef.current);
     setScreen('menu');
   }, []);
-
-  useEffect(() => {
-    if (screen !== 'playing') {
-      cancelAnimationFrame(animFrameRef.current);
-    }
-    return () => cancelAnimationFrame(animFrameRef.current);
-  }, [screen]);
 
   return {
     screen,
@@ -198,6 +181,7 @@ export function useGameState() {
     notification,
     startGame,
     backToMenu,
-    wasmStateRef, // ref instead of state – no re-renders
+    wasmStateRef,
+    tickGame,
   };
 }
