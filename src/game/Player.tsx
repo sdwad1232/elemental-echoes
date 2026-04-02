@@ -71,11 +71,11 @@ export function Player({ activeElement, playerRef, wasmStateRef }: PlayerProps) 
       </mesh>
       <points ref={particlesRef}>
         <bufferGeometry>
-          <bufferAttribute attach="attributes-position" count={30} array={particlePositions} itemSize={3} />
+          <bufferAttribute attach="attributes-position" count={15} array={particlePositions} itemSize={3} />
         </bufferGeometry>
         <pointsMaterial color={glow} size={0.08} transparent opacity={0.7} />
       </points>
-      <pointLight color={glow} intensity={2} distance={8} />
+      <pointLight color={glow} intensity={1.5} distance={5} />
     </group>
   );
 }
