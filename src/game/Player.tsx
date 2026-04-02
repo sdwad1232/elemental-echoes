@@ -43,14 +43,17 @@ export function Player({ activeElement, playerRef, wasmStateRef }: PlayerProps) 
   const color = ELEMENTS[activeElement].color;
   const glow = ELEMENTS[activeElement].glowColor;
 
-  const particlePositions = new Float32Array(30 * 3);
-  for (let i = 0; i < 30; i++) {
-    const angle = (i / 30) * Math.PI * 2;
-    const r = 1.2 + Math.sin(i * 0.5) * 0.3;
-    particlePositions[i * 3] = Math.cos(angle) * r;
-    particlePositions[i * 3 + 1] = (Math.random() - 0.5) * 1.5;
-    particlePositions[i * 3 + 2] = Math.sin(angle) * r;
-  }
+  const particlePositions = useMemo(() => {
+    const arr = new Float32Array(15 * 3);
+    for (let i = 0; i < 15; i++) {
+      const angle = (i / 15) * Math.PI * 2;
+      const r = 1.2 + Math.sin(i * 0.5) * 0.3;
+      arr[i * 3] = Math.cos(angle) * r;
+      arr[i * 3 + 1] = (Math.random() - 0.5) * 1.5;
+      arr[i * 3 + 2] = Math.sin(angle) * r;
+    }
+    return arr;
+  }, []);
 
   return (
     <group ref={groupRef}>
