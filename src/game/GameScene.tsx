@@ -6,7 +6,7 @@ import { Player } from './Player';
 import { Enemies } from './Enemies';
 import { Collectibles } from './Collectibles';
 import { Portals } from './Portals';
-import { Element, Realm, EnemyData, CollectibleData, ELEMENTS, REALM_CONFIGS } from './types';
+import { Element, Realm, ELEMENTS, REALM_CONFIGS } from './types';
 import { WasmGameState } from './wasmBridge';
 import * as THREE from 'three';
 
@@ -17,61 +17,59 @@ interface GameSceneProps {
   tickGame: (delta: number) => void;
 }
 
-/** Camera that follows the player with cinematic smoothing */
+// Reusable vectors to avoid GC pressure
+const _playerPos = new THREE.Vector3();
+const _movement = new THREE.Vector3();
+const _baseOffset = new THREE.Vector3();
+const _targetPos = new THREE.Vector3();
+const _targetLookAt = new THREE.Vector3();
+
 function CameraFollower({ wasmStateRef }: { wasmStateRef: React.MutableRefObject<WasmGameState | null> }) {
   const { camera } = useThree();
   const smoothPos = useRef(new THREE.Vector3(0, 8, 12));
   const smoothLookAt = useRef(new THREE.Vector3(0, 1, 0));
-  const prevPlayerPos = useRef(new THREE.Vector3(0, 0, 0));
-  const velocityDir = useRef(new THREE.Vector3(0, 0, 1));
+  const prevX = useRef(0);
+  const prevZ = useRef(0);
+  const velX = useRef(0);
+  const velZ = useRef(1);
 
-  useFrame((_, delta) => {
+  useFrame(() => {
     const state = wasmStateRef.current;
     if (!state) return;
 
-    const playerPos = new THREE.Vector3(state.playerX, state.playerY, state.playerZ);
-
-    // Track movement direction for dynamic offset
-    const movement = new THREE.Vector3(
-      state.playerX - prevPlayerPos.current.x,
-      0,
-      state.playerZ - prevPlayerPos.current.z
-    );
-    if (movement.length() > 0.01) {
-      velocityDir.current.lerp(movement.normalize(), 0.05);
+    const mx = state.playerX - prevX.current;
+    const mz = state.playerZ - prevZ.current;
+    const mLen = Math.sqrt(mx * mx + mz * mz);
+    if (mLen > 0.01) {
+      velX.current += (mx / mLen - velX.current) * 0.05;
+      velZ.current += (mz / mLen - velZ.current) * 0.05;
     }
-    prevPlayerPos.current.copy(playerPos);
+    prevX.current = state.playerX;
+    prevZ.current = state.playerZ;
 
-    // Dynamic offset: camera pulls back slightly in movement direction
-    const baseOffset = new THREE.Vector3(0, 8, 10);
-    const moveBias = velocityDir.current.clone().multiplyScalar(-3);
-    moveBias.y = 0;
-    const desiredOffset = baseOffset.clone().add(moveBias);
+    _targetPos.set(
+      state.playerX - velX.current * 3,
+      state.playerY + 8,
+      state.playerZ - velZ.current * 3 + 10
+    );
 
-    // Target camera position
-    const targetPos = playerPos.clone().add(desiredOffset);
-
-    // Smooth follow with variable speed (faster catch-up when far)
-    const dist = smoothPos.current.distanceTo(targetPos);
-    const lerpSpeed = THREE.MathUtils.clamp(0.03 + dist * 0.015, 0.03, 0.15);
-    smoothPos.current.lerp(targetPos, lerpSpeed);
+    const dist = smoothPos.current.distanceTo(_targetPos);
+    const lerpSpeed = Math.min(0.03 + dist * 0.015, 0.15);
+    smoothPos.current.lerp(_targetPos, lerpSpeed);
     camera.position.copy(smoothPos.current);
 
-    // Smooth look-at target (slightly ahead of player)
-    const lookAhead = velocityDir.current.clone().multiplyScalar(2);
-    const targetLookAt = new THREE.Vector3(
-      state.playerX + lookAhead.x,
+    _targetLookAt.set(
+      state.playerX + velX.current * 2,
       state.playerY + 1.5,
-      state.playerZ + lookAhead.z
+      state.playerZ + velZ.current * 2
     );
-    smoothLookAt.current.lerp(targetLookAt, 0.06);
+    smoothLookAt.current.lerp(_targetLookAt, 0.06);
     camera.lookAt(smoothLookAt.current);
   });
 
   return null;
 }
 
-/** Inner component – runs game tick + renders */
 function GameWorld({ wasmStateRef, activeElement, currentRealm, tickGame }: {
   wasmStateRef: React.MutableRefObject<WasmGameState | null>;
   activeElement: Element;
@@ -80,7 +78,6 @@ function GameWorld({ wasmStateRef, activeElement, currentRealm, tickGame }: {
 }) {
   const playerRef = useRef<THREE.Group>(null);
 
-  // Single unified game loop: input → WASM tick → read state
   useFrame((_, delta) => {
     tickGame(Math.min(delta, 0.1));
   });
@@ -114,8 +111,10 @@ export function GameScene({ activeElement, currentRealm, wasmStateRef, tickGame 
       shadows
       camera={{ position: [0, 10, 14], fov: 55 }}
       style={{ width: '100vw', height: '100vh' }}
-      onCreated={({ scene }) => {
+      gl={{ antialias: false, powerPreference: 'high-performance' }}
+      onCreated={({ scene, gl }) => {
         scene.fog = new THREE.FogExp2(realmConfig.fogColor, 0.028);
+        gl.shadowMap.type = THREE.BasicShadowMap;
       }}
     >
       <color attach="background" args={[realmConfig.fogColor]} />
@@ -125,11 +124,11 @@ export function GameScene({ activeElement, currentRealm, wasmStateRef, tickGame 
         intensity={1.2}
         color={elConfig.glowColor}
         castShadow
-        shadow-mapSize={[1024, 1024]}
+        shadow-mapSize={[512, 512]}
       />
       <hemisphereLight color={elConfig.glowColor} groundColor={realmConfig.groundColor} intensity={0.3} />
 
-      <Stars radius={60} depth={40} count={3000} factor={3} saturation={0.2} fade speed={0.3} />
+      <Stars radius={60} depth={40} count={1000} factor={3} saturation={0.2} fade speed={0.3} />
 
       <GameWorld
         wasmStateRef={wasmStateRef}
