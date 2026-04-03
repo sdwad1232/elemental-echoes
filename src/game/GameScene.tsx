@@ -107,7 +107,7 @@ function GameWorld({ wasmStateRef, activeElement, currentRealm, tickGame, combat
   );
 }
 
-export function GameScene({ activeElement, currentRealm, wasmStateRef, tickGame }: GameSceneProps) {
+export function GameScene({ activeElement, currentRealm, wasmStateRef, tickGame, combatRef }: GameSceneProps) {
   const realmConfig = REALM_CONFIGS[currentRealm];
   const elConfig = ELEMENTS[activeElement];
 
