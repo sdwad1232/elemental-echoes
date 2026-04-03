@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, MutableRefObject } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Stars } from '@react-three/drei';
 import { Terrain, FloatingIslands, RealmDecorations } from './Terrain';
@@ -6,6 +6,8 @@ import { Player } from './Player';
 import { Enemies } from './Enemies';
 import { Collectibles } from './Collectibles';
 import { Portals } from './Portals';
+import { CombatEffects, AttackEffect } from './CombatEffects';
+import { CombatState } from './useGameState';
 import { Element, Realm, ELEMENTS, REALM_CONFIGS } from './types';
 import { WasmGameState } from './wasmBridge';
 import * as THREE from 'three';
@@ -15,6 +17,7 @@ interface GameSceneProps {
   currentRealm: Realm;
   wasmStateRef: React.MutableRefObject<WasmGameState | null>;
   tickGame: (delta: number) => void;
+  combatRef: MutableRefObject<CombatState>;
 }
 
 // Reusable vectors to avoid GC pressure
@@ -70,11 +73,12 @@ function CameraFollower({ wasmStateRef }: { wasmStateRef: React.MutableRefObject
   return null;
 }
 
-function GameWorld({ wasmStateRef, activeElement, currentRealm, tickGame }: {
+function GameWorld({ wasmStateRef, activeElement, currentRealm, tickGame, combatRef }: {
   wasmStateRef: React.MutableRefObject<WasmGameState | null>;
   activeElement: Element;
   currentRealm: Realm;
   tickGame: (delta: number) => void;
+  combatRef: MutableRefObject<CombatState>;
 }) {
   const playerRef = useRef<THREE.Group>(null);
 
@@ -93,6 +97,7 @@ function GameWorld({ wasmStateRef, activeElement, currentRealm, tickGame }: {
       <Portals currentRealm={currentRealm} />
       <Enemies enemies={enemies} />
       <Collectibles collectibles={collectibles} />
+      <CombatEffects effects={combatRef.current.effects} />
       <Player
         activeElement={activeElement}
         playerRef={playerRef}
@@ -102,7 +107,7 @@ function GameWorld({ wasmStateRef, activeElement, currentRealm, tickGame }: {
   );
 }
 
-export function GameScene({ activeElement, currentRealm, wasmStateRef, tickGame }: GameSceneProps) {
+export function GameScene({ activeElement, currentRealm, wasmStateRef, tickGame, combatRef }: GameSceneProps) {
   const realmConfig = REALM_CONFIGS[currentRealm];
   const elConfig = ELEMENTS[activeElement];
 
@@ -135,6 +140,7 @@ export function GameScene({ activeElement, currentRealm, wasmStateRef, tickGame 
         activeElement={activeElement}
         currentRealm={currentRealm}
         tickGame={tickGame}
+        combatRef={combatRef}
       />
 
       <CameraFollower wasmStateRef={wasmStateRef} />

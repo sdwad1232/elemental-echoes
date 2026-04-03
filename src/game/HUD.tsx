@@ -1,5 +1,13 @@
 import { Element, Realm, GameStats, ELEMENTS, REALM_CONFIGS } from './types';
 
+interface CombatHudData {
+  combo: number;
+  dashReady: boolean;
+  abilityReady: boolean;
+  abilityCooldownPercent: number;
+  dashCooldownPercent: number;
+}
+
 interface HUDProps {
   activeElement: Element;
   health: number;
@@ -10,16 +18,18 @@ interface HUDProps {
   notification: string | null;
   onSwitchElement: (el: Element) => void;
   onBack: () => void;
+  combatHud?: CombatHudData;
 }
 
 export function HUD({
   activeElement, health, currentRealm, stats,
   damageFlash, levelUpFlash, notification,
-  onSwitchElement, onBack,
+  onSwitchElement, onBack, combatHud,
 }: HUDProps) {
   const elements: Element[] = ['fire', 'water', 'earth', 'air'];
   const realmConfig = REALM_CONFIGS[currentRealm];
   const xpPercent = (stats.xp / stats.xpToNext) * 100;
+  const elConfig = ELEMENTS[activeElement];
 
   return (
     <div className="fixed inset-0 pointer-events-none z-10">
@@ -30,6 +40,21 @@ export function HUD({
       {/* Level up flash */}
       {levelUpFlash && (
         <div className="absolute inset-0 bg-yellow-400/10 pointer-events-none transition-opacity" />
+      )}
+
+      {/* Combo notification */}
+      {combatHud && combatHud.combo >= 2 && (
+        <div className="absolute top-32 left-1/2 -translate-x-1/2 pointer-events-none">
+          <div
+            className="font-display text-2xl tracking-widest font-bold px-4 py-1 rounded-lg animate-pulse"
+            style={{
+              color: elConfig.glowColor,
+              textShadow: `0 0 20px ${elConfig.glowColor}, 0 0 40px ${elConfig.glowColor}50`,
+            }}
+          >
+            {combatHud.combo}× COMBO!
+          </div>
+        </div>
       )}
 
       {/* Notification */}
@@ -93,6 +118,58 @@ export function HUD({
         </button>
       </div>
 
+      {/* Right side: Ability cooldowns */}
+      {combatHud && (
+        <div className="absolute right-5 top-1/2 -translate-y-1/2 flex flex-col gap-3 pointer-events-auto">
+          {/* Dash */}
+          <div className="relative w-12 h-12 flex items-center justify-center">
+            <div
+              className="absolute inset-0 rounded-xl border-2 overflow-hidden"
+              style={{
+                borderColor: combatHud.dashReady ? elConfig.glowColor : '#333',
+                backgroundColor: combatHud.dashReady ? elConfig.color + '20' : '#11111180',
+              }}
+            >
+              {!combatHud.dashReady && (
+                <div
+                  className="absolute bottom-0 left-0 right-0 transition-all"
+                  style={{
+                    height: `${combatHud.dashCooldownPercent * 100}%`,
+                    backgroundColor: elConfig.color + '30',
+                  }}
+                />
+              )}
+            </div>
+            <span className="relative text-lg z-10">💨</span>
+            <span className="absolute -bottom-4 text-[8px] font-body text-muted-foreground">SHIFT</span>
+          </div>
+
+          {/* Ability */}
+          <div className="relative w-12 h-12 flex items-center justify-center">
+            <div
+              className="absolute inset-0 rounded-xl border-2 overflow-hidden"
+              style={{
+                borderColor: combatHud.abilityReady ? elConfig.glowColor : '#333',
+                backgroundColor: combatHud.abilityReady ? elConfig.color + '20' : '#11111180',
+                boxShadow: combatHud.abilityReady ? `0 0 12px ${elConfig.glowColor}40` : 'none',
+              }}
+            >
+              {!combatHud.abilityReady && (
+                <div
+                  className="absolute bottom-0 left-0 right-0 transition-all"
+                  style={{
+                    height: `${combatHud.abilityCooldownPercent * 100}%`,
+                    backgroundColor: elConfig.color + '30',
+                  }}
+                />
+              )}
+            </div>
+            <span className="relative text-lg z-10">{elConfig.icon}</span>
+            <span className="absolute -bottom-4 text-[8px] font-body text-muted-foreground">E</span>
+          </div>
+        </div>
+      )}
+
       {/* Bottom center: Elements */}
       <div className="absolute bottom-6 left-1/2 -translate-x-1/2">
         <div className="flex gap-1.5 bg-background/60 backdrop-blur-sm rounded-xl p-1.5 border border-border/50 pointer-events-auto">
@@ -129,7 +206,7 @@ export function HUD({
         <div className="bg-background/40 backdrop-blur-sm rounded-lg px-2.5 py-1.5 border border-border/30">
           <p className="text-[9px] font-body text-muted-foreground/70 leading-relaxed">
             WASD — Move · 1-4 — Elements<br />
-            Space — Attack · Mouse — Camera
+            Space — Attack · Shift — Dash · E — Ability
           </p>
         </div>
       </div>
