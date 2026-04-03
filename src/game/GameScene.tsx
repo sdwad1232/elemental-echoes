@@ -140,6 +140,7 @@ export function GameScene({ activeElement, currentRealm, wasmStateRef, tickGame,
         activeElement={activeElement}
         currentRealm={currentRealm}
         tickGame={tickGame}
+        combatRef={combatRef}
       />
 
       <CameraFollower wasmStateRef={wasmStateRef} />
