@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, MutableRefObject } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Stars } from '@react-three/drei';
 import { Terrain, FloatingIslands, RealmDecorations } from './Terrain';
@@ -6,6 +6,8 @@ import { Player } from './Player';
 import { Enemies } from './Enemies';
 import { Collectibles } from './Collectibles';
 import { Portals } from './Portals';
+import { CombatEffects, AttackEffect } from './CombatEffects';
+import { CombatState } from './useGameState';
 import { Element, Realm, ELEMENTS, REALM_CONFIGS } from './types';
 import { WasmGameState } from './wasmBridge';
 import * as THREE from 'three';
