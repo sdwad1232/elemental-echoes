@@ -97,6 +97,7 @@ function GameWorld({ wasmStateRef, activeElement, currentRealm, tickGame, combat
       <Portals currentRealm={currentRealm} />
       <Enemies enemies={enemies} />
       <Collectibles collectibles={collectibles} />
+      <CombatEffects effects={combatRef.current.effects} />
       <Player
         activeElement={activeElement}
         playerRef={playerRef}
