@@ -17,6 +17,7 @@ interface GameSceneProps {
   currentRealm: Realm;
   wasmStateRef: React.MutableRefObject<WasmGameState | null>;
   tickGame: (delta: number) => void;
+  combatRef: MutableRefObject<CombatState>;
 }
 
 // Reusable vectors to avoid GC pressure
