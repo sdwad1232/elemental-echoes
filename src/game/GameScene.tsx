@@ -73,11 +73,12 @@ function CameraFollower({ wasmStateRef }: { wasmStateRef: React.MutableRefObject
   return null;
 }
 
-function GameWorld({ wasmStateRef, activeElement, currentRealm, tickGame }: {
+function GameWorld({ wasmStateRef, activeElement, currentRealm, tickGame, combatRef }: {
   wasmStateRef: React.MutableRefObject<WasmGameState | null>;
   activeElement: Element;
   currentRealm: Realm;
   tickGame: (delta: number) => void;
+  combatRef: MutableRefObject<CombatState>;
 }) {
   const playerRef = useRef<THREE.Group>(null);
 
