@@ -68,6 +68,7 @@ export function useGameState() {
   const wasmStateRef = useRef<WasmGameState | null>(null);
   const screenRef = useRef<GameScreen>('menu');
   const hudTickRef = useRef(0);
+  const extendedRealmRef = useRef<Realm>('fire'); // tracks actual realm incl. new ones
   const setHudStateRef = useRef(setHudState);
   setHudStateRef.current = setHudState;
   const setCombatHudRef = useRef(setCombatHud);
