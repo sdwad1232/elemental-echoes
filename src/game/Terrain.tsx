@@ -16,14 +16,19 @@ export function Terrain({ currentRealm }: TerrainProps) {
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i);
       const z = pos.getY(i);
-      const height = Math.sin(x * 0.3) * Math.cos(z * 0.3) * 0.8 +
+      let height = Math.sin(x * 0.3) * Math.cos(z * 0.3) * 0.8 +
         Math.sin(x * 0.7 + 1) * 0.3 +
         Math.cos(z * 0.5 + 2) * 0.4;
+      // Realm-specific terrain variation
+      if (currentRealm === 'ice') height *= 0.4; // flatter icy terrain
+      if (currentRealm === 'crystal') height = Math.abs(height) * 1.5; // spiky crystals
+      if (currentRealm === 'shadow') height *= 0.2; // nearly flat void
+      if (currentRealm === 'lightning') height += Math.sin(x * 2) * 0.3; // jagged peaks
       pos.setZ(i, height);
     }
     geo.computeVertexNormals();
     return geo;
-  }, []);
+  }, [currentRealm]);
 
   return (
     <mesh geometry={geometry} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
@@ -40,10 +45,13 @@ export function FloatingIslands({ currentRealm }: { currentRealm: Realm }) {
     if (groupRef.current) groupRef.current.rotation.y += delta * 0.015;
   });
 
-  const islands = useMemo(() => [
-    [8, 4, 5], [-6, 5, -8], [10, 6, -4], [-9, 3, 6],
-    [3, 7, -10], [-4, 8, 3], [12, 5, 8], [-11, 6, -3],
-  ], []);
+  const islands = useMemo(() => {
+    const base = [
+      [8, 4, 5], [-6, 5, -8], [10, 6, -4], [-9, 3, 6],
+      [3, 7, -10], [-4, 8, 3], [12, 5, 8], [-11, 6, -3],
+    ];
+    return base.map(([x, y, z]) => [x, y * config.gravity, z]);
+  }, [config.gravity]);
 
   return (
     <group ref={groupRef}>
@@ -57,16 +65,16 @@ export function FloatingIslands({ currentRealm }: { currentRealm: Realm }) {
   );
 }
 
-// Decorative structures per realm
 export function RealmDecorations({ currentRealm }: { currentRealm: Realm }) {
   const structures = useMemo(() => {
-    const items: Array<{ pos: [number, number, number]; scale: number }> = [];
+    const items: Array<{ pos: [number, number, number]; scale: number; seed: number }> = [];
     for (let i = 0; i < 12; i++) {
       const angle = (i / 12) * Math.PI * 2;
-      const dist = 7 + Math.random() * 8;
+      const dist = 7 + ((i * 7919) % 100) / 100 * 8;
       items.push({
         pos: [Math.cos(angle) * dist, 0, Math.sin(angle) * dist],
-        scale: 0.5 + Math.random() * 1.5,
+        scale: 0.5 + ((i * 3571) % 100) / 100 * 1.5,
+        seed: i,
       });
     }
     return items;
@@ -101,6 +109,54 @@ export function RealmDecorations({ currentRealm }: { currentRealm: Realm }) {
               <sphereGeometry args={[0.2 + s.scale * 0.1, 8, 8]} />
               <meshStandardMaterial color="#8899aa" emissive="#aabbcc" emissiveIntensity={0.3} transparent opacity={0.4} />
             </mesh>
+          )}
+          {currentRealm === 'shadow' && (
+            <group>
+              <mesh position={[0, s.scale * 0.5, 0]}>
+                <octahedronGeometry args={[0.3 + s.scale * 0.2, 0]} />
+                <meshStandardMaterial color="#1a0030" emissive="#8b00ff" emissiveIntensity={0.4} transparent opacity={0.6} />
+              </mesh>
+              <mesh position={[0, 0.1, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+                <ringGeometry args={[0.5, 0.8 + s.scale * 0.3, 6]} />
+                <meshStandardMaterial color="#2a0050" emissive="#6600aa" emissiveIntensity={0.3} transparent opacity={0.3} side={THREE.DoubleSide} />
+              </mesh>
+            </group>
+          )}
+          {currentRealm === 'lightning' && (
+            <group>
+              <mesh position={[0, s.scale * 0.6, 0]} castShadow>
+                <cylinderGeometry args={[0.05, 0.2, s.scale * 1.2, 4]} />
+                <meshStandardMaterial color="#3a3a50" emissive="#ffff00" emissiveIntensity={0.5} metalness={0.8} roughness={0.2} />
+              </mesh>
+              <mesh position={[0, s.scale * 1.2, 0]}>
+                <sphereGeometry args={[0.12, 8, 8]} />
+                <meshStandardMaterial color="#ffff44" emissive="#ffff00" emissiveIntensity={1.0} />
+              </mesh>
+            </group>
+          )}
+          {currentRealm === 'ice' && (
+            <group>
+              <mesh position={[0, s.scale * 0.4, 0]} castShadow rotation={[0, s.seed * 0.8, 0.1]}>
+                <boxGeometry args={[0.3, s.scale * 0.8, 0.2]} />
+                <meshStandardMaterial color="#88ccee" emissive="#44aadd" emissiveIntensity={0.15} transparent opacity={0.7} metalness={0.3} roughness={0.1} />
+              </mesh>
+              <mesh position={[0.15, s.scale * 0.3, 0.1]} castShadow rotation={[0.2, s.seed, -0.15]}>
+                <boxGeometry args={[0.15, s.scale * 0.5, 0.12]} />
+                <meshStandardMaterial color="#aaddff" emissive="#88ddff" emissiveIntensity={0.1} transparent opacity={0.6} />
+              </mesh>
+            </group>
+          )}
+          {currentRealm === 'crystal' && (
+            <group>
+              <mesh position={[0, s.scale * 0.5, 0]} castShadow rotation={[0.1, s.seed * 1.2, 0.15]}>
+                <coneGeometry args={[0.2, s.scale, 5]} />
+                <meshStandardMaterial color="#cc22cc" emissive="#ff44ff" emissiveIntensity={0.4} metalness={0.9} roughness={0.05} />
+              </mesh>
+              <mesh position={[-0.2, s.scale * 0.3, 0.1]} castShadow rotation={[-0.2, s.seed * 0.7, -0.3]}>
+                <coneGeometry args={[0.12, s.scale * 0.6, 5]} />
+                <meshStandardMaterial color="#aa11aa" emissive="#dd33dd" emissiveIntensity={0.3} metalness={0.9} roughness={0.05} />
+              </mesh>
+            </group>
           )}
         </group>
       ))}
