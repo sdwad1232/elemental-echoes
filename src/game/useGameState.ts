@@ -1,11 +1,12 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Element, Realm, GameStats } from './types';
+import { Element, Realm, GameStats, REALM_CONFIGS, REALM_BASE_ELEMENT, ALL_REALMS } from './types';
 import { AttackEffect } from './CombatEffects';
 import {
   initializeWasm, isWasmReady, wasmInitGame, wasmSwitchElement,
   wasmMovePlayer, wasmPlayerAttack, wasmTick, wasmGetState, wasmDrainEvents,
   WasmGameState, GameEvent,
 } from './wasmBridge';
+import { PORTAL_POSITIONS } from './Portals';
 
 export type GameScreen = 'menu' | 'playing' | 'gameover' | 'loading';
 
