@@ -300,13 +300,52 @@ export function useGameState() {
     const state = wasmGetState();
     wasmStateRef.current = state;
 
+    // JS-side portal detection for extended realms (shadow, lightning, ice, crystal)
+    const extendedRealms: Realm[] = ['shadow', 'lightning', 'ice', 'crystal'];
+    for (const realm of extendedRealms) {
+      if (realm === extendedRealmRef.current) continue;
+      const portalPos = PORTAL_POSITIONS[realm];
+      const pdx = portalPos[0] - state.playerX;
+      const pdz = portalPos[2] - state.playerZ;
+      const pDist = Math.sqrt(pdx * pdx + pdz * pdz);
+      if (pDist < 2.5) {
+        extendedRealmRef.current = realm;
+        // Tell WASM to use the base element for this realm
+        const baseEl = REALM_BASE_ELEMENT[realm];
+        // Spawn enemies via WASM using base element
+        wasmTick(now, 0); // sync
+        const realmConfig = REALM_CONFIGS[realm];
+        processEvents([{
+          type: 'Notification',
+          msg: `Entered ${realmConfig.name}`,
+        }]);
+        break;
+      }
+    }
+
+    // Also track when WASM changes realm (base 4 realms)
+    const baseRealms: Realm[] = ['fire', 'water', 'earth', 'air'];
+    if (baseRealms.includes(state.currentRealm as Realm)) {
+      if (extendedRealmRef.current !== state.currentRealm) {
+        // Check if we're near a base portal - WASM handles this
+        for (const br of baseRealms) {
+          const pp = PORTAL_POSITIONS[br];
+          const d = Math.sqrt((pp[0] - state.playerX) ** 2 + (pp[2] - state.playerZ) ** 2);
+          if (d < 3 && br === state.currentRealm) {
+            extendedRealmRef.current = br;
+            break;
+          }
+        }
+      }
+    }
+
     // Update HUD at ~10fps
     hudTickRef.current++;
     if (hudTickRef.current % 6 === 0) {
       setHudStateRef.current({
         activeElement: state.playerElement,
         health: state.playerHealth,
-        currentRealm: state.currentRealm,
+        currentRealm: extendedRealmRef.current,
         stats: {
           kills: state.playerKills,
           xp: state.playerXp,
