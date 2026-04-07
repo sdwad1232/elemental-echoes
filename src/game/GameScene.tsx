@@ -1,7 +1,7 @@
 import { useRef, MutableRefObject } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { Stars } from '@react-three/drei';
 import { Terrain, FloatingIslands, RealmDecorations } from './Terrain';
+import { RealisticSky, SunLight } from './RealisticSky';
 import { Player } from './Player';
 import { Enemies } from './Enemies';
 import { Collectibles } from './Collectibles';
@@ -20,10 +20,6 @@ interface GameSceneProps {
   combatRef: MutableRefObject<CombatState>;
 }
 
-// Reusable vectors to avoid GC pressure
-const _playerPos = new THREE.Vector3();
-const _movement = new THREE.Vector3();
-const _baseOffset = new THREE.Vector3();
 const _targetPos = new THREE.Vector3();
 const _targetLookAt = new THREE.Vector3();
 
@@ -108,9 +104,6 @@ function GameWorld({ wasmStateRef, activeElement, currentRealm, tickGame, combat
 }
 
 export function GameScene({ activeElement, currentRealm, wasmStateRef, tickGame, combatRef }: GameSceneProps) {
-  const realmConfig = REALM_CONFIGS[currentRealm];
-  const elConfig = ELEMENTS[activeElement];
-
   return (
     <Canvas
       shadows
@@ -118,22 +111,14 @@ export function GameScene({ activeElement, currentRealm, wasmStateRef, tickGame,
       style={{ width: '100vw', height: '100vh' }}
       gl={{ antialias: false, powerPreference: 'high-performance' }}
       onCreated={({ scene, gl }) => {
-        scene.fog = new THREE.FogExp2(realmConfig.fogColor, 0.028);
+        scene.fog = new THREE.FogExp2('#c9d8e8', 0.008);
         gl.shadowMap.type = THREE.BasicShadowMap;
       }}
     >
-      <color attach="background" args={[realmConfig.fogColor]} />
-      <ambientLight color={realmConfig.ambientColor} intensity={0.5} />
-      <directionalLight
-        position={[10, 15, 5]}
-        intensity={1.2}
-        color={elConfig.glowColor}
-        castShadow
-        shadow-mapSize={[512, 512]}
-      />
-      <hemisphereLight color={elConfig.glowColor} groundColor={realmConfig.groundColor} intensity={0.3} />
-
-      <Stars radius={60} depth={40} count={1000} factor={3} saturation={0.2} fade speed={0.3} />
+      {/* Sky shader replaces solid background color */}
+      <RealisticSky />
+      <SunLight />
+      <ambientLight color="#b0c4de" intensity={0.4} />
 
       <GameWorld
         wasmStateRef={wasmStateRef}

@@ -1,38 +1,102 @@
 import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { createNoise2D } from 'simplex-noise';
 import { Realm, REALM_CONFIGS } from './types';
 
 interface TerrainProps {
   currentRealm: Realm;
 }
 
-export function Terrain({ currentRealm }: TerrainProps) {
-  const config = REALM_CONFIGS[currentRealm];
+const noise2D = createNoise2D();
 
-  const geometry = useMemo(() => {
-    const geo = new THREE.PlaneGeometry(50, 50, 40, 40);
+function sampleHeight(x: number, z: number, currentRealm: Realm): number {
+  // Large hills
+  let h = noise2D(x * 0.04, z * 0.04) * 3.0;
+  // Medium detail
+  h += noise2D(x * 0.15, z * 0.15) * 0.8;
+  // Fine detail
+  h += noise2D(x * 0.5, z * 0.5) * 0.2;
+
+  // Realm-specific modifiers
+  if (currentRealm === 'ice') h *= 0.5;
+  if (currentRealm === 'crystal') h = Math.abs(h) * 1.3;
+  if (currentRealm === 'shadow') h *= 0.25;
+  if (currentRealm === 'lightning') h += Math.sin(x * 0.8) * 0.6;
+
+  return h;
+}
+
+function terrainColor(h: number, maxH: number): THREE.Color {
+  const t = (h - (-maxH)) / (2 * maxH); // normalize 0..1
+  const soil = new THREE.Color('#3d2b1f');
+  const grass = new THREE.Color('#7a8c4e');
+  const rock = new THREE.Color('#9e9e9e');
+  if (t < 0.45) return soil.clone().lerp(grass, t / 0.45);
+  return grass.clone().lerp(rock, (t - 0.45) / 0.55);
+}
+
+export function Terrain({ currentRealm }: TerrainProps) {
+  const { geometry, normalTex } = useMemo(() => {
+    const seg = 200; // keep <=256
+    const size = 80;
+    const geo = new THREE.PlaneGeometry(size, size, seg, seg);
     const pos = geo.attributes.position;
+    const colors = new Float32Array(pos.count * 3);
+    let maxH = 1;
+
+    // First pass: set heights
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i);
       const z = pos.getY(i);
-      let height = Math.sin(x * 0.3) * Math.cos(z * 0.3) * 0.8 +
-        Math.sin(x * 0.7 + 1) * 0.3 +
-        Math.cos(z * 0.5 + 2) * 0.4;
-      // Realm-specific terrain variation
-      if (currentRealm === 'ice') height *= 0.4; // flatter icy terrain
-      if (currentRealm === 'crystal') height = Math.abs(height) * 1.5; // spiky crystals
-      if (currentRealm === 'shadow') height *= 0.2; // nearly flat void
-      if (currentRealm === 'lightning') height += Math.sin(x * 2) * 0.3; // jagged peaks
-      pos.setZ(i, height);
+      const h = sampleHeight(x, z, currentRealm);
+      pos.setZ(i, h);
+      if (Math.abs(h) > maxH) maxH = Math.abs(h);
     }
+
+    // Second pass: vertex colors
+    for (let i = 0; i < pos.count; i++) {
+      const h = pos.getZ(i);
+      const c = terrainColor(h, maxH);
+      colors[i * 3] = c.r;
+      colors[i * 3 + 1] = c.g;
+      colors[i * 3 + 2] = c.b;
+    }
+    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     geo.computeVertexNormals();
-    return geo;
+
+    // Generate a simple normal map from noise
+    const nSize = 128;
+    const data = new Uint8Array(nSize * nSize * 4);
+    for (let y = 0; y < nSize; y++) {
+      for (let x = 0; x < nSize; x++) {
+        const idx = (y * nSize + x) * 4;
+        const scale = 0.3;
+        const nx = (noise2D((x + 1) * scale, y * scale) - noise2D((x - 1) * scale, y * scale)) * 0.5;
+        const ny = (noise2D(x * scale, (y + 1) * scale) - noise2D(x * scale, (y - 1) * scale)) * 0.5;
+        data[idx] = Math.floor((nx * 0.5 + 0.5) * 255);
+        data[idx + 1] = Math.floor((ny * 0.5 + 0.5) * 255);
+        data[idx + 2] = 255;
+        data[idx + 3] = 255;
+      }
+    }
+    const nTex = new THREE.DataTexture(data, nSize, nSize, THREE.RGBAFormat);
+    nTex.wrapS = nTex.wrapT = THREE.RepeatWrapping;
+    nTex.repeat.set(8, 8);
+    nTex.needsUpdate = true;
+
+    return { geometry: geo, normalTex: nTex };
   }, [currentRealm]);
 
   return (
     <mesh geometry={geometry} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-      <meshStandardMaterial color={config.groundColor} roughness={0.9} metalness={0.1} />
+      <meshStandardMaterial
+        vertexColors
+        roughness={0.9}
+        metalness={0.0}
+        normalMap={normalTex}
+        normalScale={new THREE.Vector2(0.6, 0.6)}
+      />
     </mesh>
   );
 }
