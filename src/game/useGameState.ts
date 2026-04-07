@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { Element, Realm, GameStats, REALM_CONFIGS, REALM_BASE_ELEMENT, ALL_REALMS } from './types';
+import { sampleHeight } from './Terrain';
 import { AttackEffect } from './CombatEffects';
 import {
   initializeWasm, isWasmReady, wasmInitGame, wasmSwitchElement,
@@ -298,6 +299,9 @@ export function useGameState() {
 
     // Read state into ref
     const state = wasmGetState();
+    // Override playerY to follow terrain heightmap
+    const terrainH = sampleHeight(state.playerX, state.playerZ, extendedRealmRef.current);
+    state.playerY = terrainH;
     wasmStateRef.current = state;
 
     // JS-side portal detection for extended realms (shadow, lightning, ice, crystal)
