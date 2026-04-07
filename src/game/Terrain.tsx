@@ -10,19 +10,19 @@ interface TerrainProps {
 
 const noise2D = createNoise2D();
 
-function sampleHeight(x: number, z: number, currentRealm: Realm): number {
-  // Large hills
-  let h = noise2D(x * 0.04, z * 0.04) * 3.0;
-  // Medium detail
-  h += noise2D(x * 0.15, z * 0.15) * 0.8;
-  // Fine detail
-  h += noise2D(x * 0.5, z * 0.5) * 0.2;
+export function sampleHeight(x: number, z: number, currentRealm: Realm): number {
+  // Gentle rolling hills — much flatter
+  let h = noise2D(x * 0.03, z * 0.03) * 1.0;
+  // Subtle medium detail
+  h += noise2D(x * 0.12, z * 0.12) * 0.25;
+  // Fine surface texture
+  h += noise2D(x * 0.5, z * 0.5) * 0.08;
 
-  // Realm-specific modifiers
-  if (currentRealm === 'ice') h *= 0.5;
-  if (currentRealm === 'crystal') h = Math.abs(h) * 1.3;
-  if (currentRealm === 'shadow') h *= 0.25;
-  if (currentRealm === 'lightning') h += Math.sin(x * 0.8) * 0.6;
+  // Realm-specific modifiers (toned down)
+  if (currentRealm === 'ice') h *= 0.6;
+  if (currentRealm === 'crystal') h = Math.abs(h) * 0.8;
+  if (currentRealm === 'shadow') h *= 0.4;
+  if (currentRealm === 'lightning') h += Math.sin(x * 0.8) * 0.2;
 
   return h;
 }
